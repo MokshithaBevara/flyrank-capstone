@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FlyRank Capstone — Settings</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="page-header">
+        <h1>Settings</h1>
+        <p class="page-subtitle">Manage your profile and preferences.</p>
+      </header>
+
+      <form id="settings-form" class="settings-form" novalidate>
+        <div
+          id="form-summary"
+          class="form-summary"
+          role="alert"
+          aria-live="assertive"
+          hidden
+        ></div>
+
+        <div class="form-field">
+          <label for="display-name">Display name</label>
+          <input
+            type="text"
+            id="display-name"
+            name="displayName"
+            autocomplete="name"
+            required
+            aria-required="true"
+            aria-describedby="display-name-error"
+            aria-invalid="false"
+          />
+          <p id="display-name-error" class="field-error" aria-live="polite" hidden></p>
+        </div>
+
+        <div class="form-field">
+          <label for="email">Email</label>
+          <input
+            type="email"
+            id="email"
+            name="email"
+            autocomplete="email"
+            required
+            aria-required="true"
+            aria-describedby="email-error"
+            aria-invalid="false"
+          />
+          <p id="email-error" class="field-error" aria-live="polite" hidden></p>
+        </div>
+
+        <div class="form-field">
+          <label for="theme">Theme</label>
+          <select id="theme" name="theme">
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+            <option value="system" selected>System</option>
+          </select>
+        </div>
+
+        <div class="form-field form-field--checkbox">
+          <input type="checkbox" id="notifications" name="notifications" />
+          <label for="notifications">Enable notifications</label>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" id="save-settings">Save</button>
+          <button type="button" id="reset-settings">Reset</button>
+        </div>
+      </form>
+    </main>
+
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
