@@ -34,3 +34,15 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## AI Tool: getHabitStats
+
+**What it does:** Looks up streak and completion stats for a specific habit, so the AI coach can answer questions with real numbers instead of guessing.
+
+**Schema:**
+- Input: `{ habitName: string }` — the habit to look up (matched loosely against known habits)
+- Output: `{ habitName: string, streak: number, completionRate: number, totalDays: number }`
+
+**Error case:** If no matching habit is found, the tool throws an error and the UI shows a designed error card suggesting habits the user can ask about instead.
+
+**Currently backed by:** sample in-memory data (`SAMPLE_HABITS` in `route.ts`) as a placeholder until real habit storage is added.

@@ -1,25 +1,17 @@
 "use client";
 
+import { useChat } from "@ai-sdk/react";
 import { useEffect, useRef, useState } from "react";
 
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-}
-
 export default function ChatCoach() {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { messages, sendMessage, status, stop } = useChat();
   const [input, setInput] = useState("");
-  const [status, setStatus] = useState<"idle" | "submitted" | "streaming">("idle");
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isPinnedToBottom, setIsPinnedToBottom] = useState(true);
-  const abortControllerRef = useRef<AbortController | null>(null);
 
   const isStreaming = status === "streaming" || status === "submitted";
 
-  // Only auto-scroll to bottom while the user hasn't scrolled up to read history
   useEffect(() => {
     if (isPinnedToBottom && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
@@ -33,76 +25,16 @@ export default function ChatCoach() {
     setIsPinnedToBottom(distanceFromBottom < 40);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim() || isStreaming) return;
-
-    const userMessage: Message = { id: crypto.randomUUID(), role: "user", content: input };
-    const assistantId = crypto.randomUUID();
-
-    const nextMessages = [...messages, userMessage];
-    setMessages([...nextMessages, { id: assistantId, role: "assistant", content: "" }]);
+    sendMessage({ text: input });
     setInput("");
-    setStatus("submitted");
     setIsPinnedToBottom(true);
-
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: nextMessages.map((m) => ({ role: m.role, content: m.content })),
-        }),
-        signal: controller.signal,
-      });
-
-      if (!res.body) throw new Error("No response body");
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let firstChunk = true;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        if (firstChunk) {
-          setStatus("streaming"); // handoff from "thinking" to actual streamed text
-          firstChunk = false;
-        }
-
-        const chunk = decoder.decode(value, { stream: true });
-
-        // Append streamed text to the assistant message as it arrives
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantId ? { ...m, content: m.content + chunk } : m
-          )
-        );
-      }
-    } catch (err) {
-      // AbortError is expected when the user clicks Stop — not a real failure
-      if (!(err instanceof DOMException && err.name === "AbortError")) {
-        console.error("Chat stream error:", err);
-      }
-    } finally {
-      setStatus("idle");
-      abortControllerRef.current = null;
-    }
-  }
-
-  function handleStop() {
-    abortControllerRef.current?.abort();
-    // Partial message is already in state from the chunks received so far — it persists as-is
-    setStatus("idle");
   }
 
   return (
     <div className="flex flex-col h-[70vh] max-w-2xl mx-auto border rounded-lg overflow-hidden">
-      {/* Message list */}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
@@ -110,38 +42,49 @@ export default function ChatCoach() {
       >
         {messages.length === 0 && (
           <p className="text-sm text-muted-foreground">
-            Ask your habit coach anything — e.g. &quot;How do I stick to a morning
-            routine?&quot;
+            Ask your habit coach anything — e.g. &quot;How is my morning run streak?&quot;
           </p>
         )}
 
-        {messages.map((message) => {
-          const isEmptyAssistant = message.role === "assistant" && message.content === "";
-          if (isEmptyAssistant && status !== "submitted") return null;
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`flex flex-col gap-2 ${
+              message.role === "user" ? "items-end" : "items-start"
+            }`}
+          >
+            {message.parts.map((part: any, i: number) => {
+              if (part.type === "text") {
+                return (
+                  <div
+                    key={i}
+                    className={`max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
+                      message.role === "user"
+                        ? "bg-blue-600 text-white"
+                        : "bg-gray-100 text-gray-900"
+                    }`}
+                  >
+                    {part.text}
+                  </div>
+                );
+              }
 
-          return (
-            <div
-              key={message.id}
-              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              {isEmptyAssistant ? (
-                <div className="bg-gray-100 text-gray-500 rounded-lg px-3 py-2 text-sm italic">
-                  Thinking…
-                </div>
-              ) : (
-                <div
-                  className={`max-w-[80%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
-                    message.role === "user"
-                      ? "bg-blue-600 text-white"
-                      : "bg-gray-100 text-gray-900"
-                  }`}
-                >
-                  {message.content}
-                </div>
-              )}
+              if (part.type === "tool-getHabitStats") {
+                return <HabitStatsToolPart key={i} part={part} />;
+              }
+
+              return null;
+            })}
+          </div>
+        ))}
+
+        {status === "submitted" && (
+          <div className="flex justify-start">
+            <div className="bg-gray-100 text-gray-500 rounded-lg px-3 py-2 text-sm italic">
+              Thinking…
             </div>
-          );
-        })}
+          </div>
+        )}
 
         {!isPinnedToBottom && (
           <button
@@ -160,7 +103,6 @@ export default function ChatCoach() {
         )}
       </div>
 
-      {/* Input row */}
       <form onSubmit={handleSubmit} className="flex gap-2 border-t p-3">
         <input
           value={input}
@@ -172,7 +114,7 @@ export default function ChatCoach() {
         {isStreaming ? (
           <button
             type="button"
-            onClick={handleStop}
+            onClick={() => stop()}
             className="bg-red-600 text-white text-sm rounded-md px-4 py-2"
           >
             Stop
@@ -189,4 +131,58 @@ export default function ChatCoach() {
       </form>
     </div>
   );
+}
+
+function HabitStatsToolPart({ part }: { part: any }) {
+  if (part.state === "input-streaming") {
+    return (
+      <div className="max-w-[80%] rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-xs text-gray-500">
+        Looking up habit…
+      </div>
+    );
+  }
+
+  if (part.state === "input-available") {
+    return (
+      <div className="max-w-[80%] rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700 animate-pulse">
+        Checking stats for &quot;{part.input?.habitName}&quot;…
+      </div>
+    );
+  }
+
+  if (part.state === "output-error") {
+    return (
+      <div className="max-w-[80%] rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        Couldn&apos;t find that habit. Try one you&apos;ve added, like &quot;morning
+        run&quot; or &quot;drink water&quot;.
+      </div>
+    );
+  }
+
+  if (part.state === "output-available") {
+    const { habitName, streak, completionRate, totalDays } = part.output;
+    return (
+      <div className="max-w-[80%] rounded-lg border bg-white shadow-sm px-4 py-3 text-sm">
+        <div className="font-semibold capitalize mb-1">{habitName}</div>
+        <div className="flex gap-4 text-gray-700">
+          <div>
+            <div className="text-lg font-bold">{streak}</div>
+            <div className="text-xs text-gray-500">day streak</div>
+          </div>
+          <div>
+            <div className="text-lg font-bold">
+              {Math.round(completionRate * 100)}%
+            </div>
+            <div className="text-xs text-gray-500">completion</div>
+          </div>
+          <div>
+            <div className="text-lg font-bold">{totalDays}</div>
+            <div className="text-xs text-gray-500">days tracked</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
