@@ -3,8 +3,15 @@
 import { useChat } from "@ai-sdk/react";
 import { useEffect, useRef, useState } from "react";
 
+const STARTER_PROMPTS = [
+  "How is my morning run streak?",
+  "Give me a tip for drinking more water",
+  "How is my meditation habit going?",
+];
+
 export default function ChatCoach() {
-  const { messages, sendMessage, status, stop } = useChat();
+  const { messages, sendMessage, status, stop, error, regenerate, clearError } =
+    useChat();
   const [input, setInput] = useState("");
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -25,12 +32,21 @@ export default function ChatCoach() {
     setIsPinnedToBottom(distanceFromBottom < 40);
   }
 
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!input.trim() || isStreaming) return;
-    sendMessage({ text: input });
+  function submitText(text: string) {
+    if (!text.trim() || isStreaming) return;
+    sendMessage({ text });
     setInput("");
     setIsPinnedToBottom(true);
+  }
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    submitText(input);
+  }
+
+  function handleRetry() {
+    clearError();
+    regenerate();
   }
 
   return (
@@ -41,9 +57,23 @@ export default function ChatCoach() {
         className="flex-1 overflow-y-auto p-4 space-y-3"
       >
         {messages.length === 0 && (
-          <p className="text-sm text-muted-foreground">
-            Ask your habit coach anything — e.g. &quot;How is my morning run streak?&quot;
-          </p>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Ask your habit coach anything. Try one of these:
+            </p>
+            <div className="flex flex-col gap-2">
+              {STARTER_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  type="button"
+                  onClick={() => submitText(prompt)}
+                  className="text-left text-sm border rounded-lg px-3 py-2 hover:bg-gray-50 transition-colors"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
         )}
 
         {messages.map((message) => (
@@ -78,10 +108,28 @@ export default function ChatCoach() {
           </div>
         ))}
 
+        {/* Skeleton matching the shape of an incoming assistant bubble */}
         {status === "submitted" && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 text-gray-500 rounded-lg px-3 py-2 text-sm italic">
-              Thinking…
+            <div className="max-w-[80%] rounded-lg bg-gray-100 px-3 py-2 space-y-2 w-40">
+              <div className="h-3 bg-gray-300 rounded animate-pulse w-full" />
+              <div className="h-3 bg-gray-300 rounded animate-pulse w-3/4" />
+            </div>
+          </div>
+        )}
+
+        {/* Designed error state with retry, not a crash */}
+        {error && (
+          <div className="flex justify-start">
+            <div className="max-w-[80%] rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 space-y-2">
+              <p>Something went wrong sending that message.</p>
+              <button
+                type="button"
+                onClick={handleRetry}
+                className="text-xs font-medium underline underline-offset-2"
+              >
+                Retry last message
+              </button>
             </div>
           </div>
         )}
