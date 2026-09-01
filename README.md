@@ -46,3 +46,13 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 **Error case:** If no matching habit is found, the tool throws an error and the UI shows a designed error card suggesting habits the user can ask about instead.
 
 **Currently backed by:** sample in-memory data (`SAMPLE_HABITS` in `route.ts`) as a placeholder until real habit storage is added.
+
+## 3D Experience: Streak Orb (/scene)
+
+**What it is:** A small interactive 3D companion for the habit tracker — an icosahedron "orb" that represents your streak. It gently follows the cursor, its material color can be changed, it has a wireframe toggle, and a "Celebrate" button triggers a spring-like scale pulse.
+
+**Stack:** React Three Fiber + drei, no external 3D model files — the geometry is procedural (a subdivided icosahedron), so there's no GLB/GLTF asset to download or compress at all.
+
+**Performance note:** The 3D canvas is lazy-loaded via `next/dynamic` with `ssr: false`, so it doesn't add to the initial page bundle until the `/scene` route is actually visited. Device pixel ratio is capped at 1.5 (`dpr={[1, 1.5]}`) to avoid over-rendering on high-DPI phones, and the geometry itself is lightweight (a single low-poly mesh, no heavy textures). Under `prefers-reduced-motion: reduce`, the canvas is skipped entirely in favor of a static CSS gradient, so no WebGL work happens at all for users who've asked for reduced motion.
+
+**With more time, I'd add:** a real `.glb` habit-icon model per habit type (compressed with DRACO), a scroll-linked camera move for a landing-page hero version of this scene, and persisting the chosen orb color so it reflects the user's actual streak progress instead of being purely decorative.
