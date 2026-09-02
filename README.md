@@ -56,3 +56,13 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 **Performance note:** The 3D canvas is lazy-loaded via `next/dynamic` with `ssr: false`, so it doesn't add to the initial page bundle until the `/scene` route is actually visited. Device pixel ratio is capped at 1.5 (`dpr={[1, 1.5]}`) to avoid over-rendering on high-DPI phones, and the geometry itself is lightweight (a single low-poly mesh, no heavy textures). Under `prefers-reduced-motion: reduce`, the canvas is skipped entirely in favor of a static CSS gradient, so no WebGL work happens at all for users who've asked for reduced motion.
 
 **With more time, I'd add:** a real `.glb` habit-icon model per habit type (compressed with DRACO), a scroll-linked camera move for a landing-page hero version of this scene, and persisting the chosen orb color so it reflects the user's actual streak progress instead of being purely decorative.
+
+## Fragment Shader Hero (/hero)
+
+**What it is:** A custom GLSL "aurora" shader rendered fullscreen as a hero background, with the "Habit Tracker" headline overlaid on top.
+
+**Uniforms used:** All three — `u_time` (drives the drifting flow field), `u_resolution` (aspect-corrects the UVs so the effect isn't stretched on wide screens), and `u_mouse` (the flow field and a warm accent color both lean toward the cursor).
+
+**How it works, in short:** Two layered sine waves (offset by time and by distance-to-cursor) create a slow-drifting color flow between a deep blue and teal. A separate "pull" value, based on distance to the mouse, blends in a warm amber accent near the cursor and slightly warps the flow field itself. A vignette darkens the edges/center so the headline text stays readable everywhere, and a light film-grain pass breaks up color banding. Full line-by-line comments are in `components/HeroShader.tsx`.
+
+**Perf/reduced-motion fallback:** The canvas is lazy-loaded via `next/dynamic` (`ssr: false`), devicePixelRatio is capped at 1.5, and under `prefers-reduced-motion: reduce` the shader is skipped entirely in favor of a static CSS gradient using the same three colors — verified via DevTools rendering emulation. The animation loop also naturally pauses when the browser tab is hidden, since it runs on `requestAnimationFrame`, which all major browsers automatically throttle/stop for hidden tabs.
