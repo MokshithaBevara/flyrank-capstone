@@ -1,68 +1,100 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Habit Tracker
 
-## Getting Started
+A habit-tracking app with an AI coach built in — chat with it for habit advice, ask it to look up your streak stats, and it responds with real, structured data instead of guesses.
 
-First, run the development server:
+Built as part of the FlyRank AI Fluency internship, Frontend AI Engineering track.
 
-```bash
+## Live URL
+
+**Production:** https://flyrank-capstone-gamma.vercel.app/
+
+Other routes worth checking:
+- `/habits` — a validated habit-entry form
+- `/button-demo` — a stateful, animated button system
+- `/scene` — an interactive 3D "streak orb"
+- `/hero` — a custom GLSL shader hero
+
+## Screenshots
+
+![Dashboard with AI chat and habit stats](/public/dashboard.png)
+![Shader hero](/public/hero.png)
+
+## What it does
+
+- Chat with an AI habit coach for short, practical, concrete suggestions
+- The coach can call a real tool (`getHabitStats`) to look up streak/completion numbers for a habit and render them as a stat card — not hallucinated text
+- Add habits through a validated form
+- Handles failure gracefully: a dropped connection shows a designed error state with a working retry, not a crash
+- A small interactive 3D scene and a custom shader hero, both built as part of the 3D/shader coursework and kept as real, working parts of the app rather than throwaway demos
+
+## Architecture
+
+- **Framework:** Next.js 16 (App Router), React 19
+- **AI:** Vercel AI SDK (`streamText`, `useChat`) talking to Google's Gemini via `@ai-sdk/google`. The chat route (`app/api/chat/route.ts`) defines a Zod-typed tool (`getHabitStats`) and streams a UI message stream back to the client.
+- **State:** all client state is local React state — no global store, since the app doesn't need one yet
+- **Styling:** Tailwind CSS
+- **3D/shaders:** React Three Fiber + drei for the streak orb, a hand-written GLSL fragment shader for the hero
+- **Testing:** Vitest + React Testing Library for component tests (chat states, tool-result rendering, form validation), Playwright for one end-to-end test of the primary flow. Both run in GitHub Actions CI on every push.
+
+## Run it locally
+
+git clone https://github.com/MokshithaBevara/flyrank-capstone.git
+cd flyrank-capstone
+npm install
+
+
+Create a `.env.local` file in the project root (see the Environment Variables table below), then:
+
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Open http://localhost:3000.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+To run the tests:
 
-## Learn More
+npm test # component tests (Vitest)
+npm run test:e2e # end-to-end test (Playwright)
 
-To learn more about Next.js, take a look at the following resources:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Environment variables
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Variable | Required | Description |
+|---|---|---|
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Yes | API key for Google's Generative AI (Gemini), used by the chat route. Get one from Google AI Studio. Set this in `.env.local` for local dev, and in Vercel's Environment Variables settings for production. |
 
-## Deploy on Vercel
+## Production hygiene
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `maxDuration = 30` set on the streaming chat route, so a stuck request can't run indefinitely
+- A simple per-IP rate limit (10 requests/minute) and a message-length cap (2000 characters) on the chat route, so a stranger can't casually spam it and drain the API budget. This is an in-memory, best-effort limiter — it resets on cold starts and isn't shared across serverless instances, which is a known limitation of not using a persistent store (like Redis) for this. Documented honestly rather than overstated.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Cross-browser testing
 
-## AI Tool: getHabitStats
+Tested and working on:
+- Chrome (primary development browser)
+- Microsoft Edge
+- Firefox
 
-**What it does:** Looks up streak and completion stats for a specific habit, so the AI coach can answer questions with real numbers instead of guessing.
+**Not tested:** Safari / mobile Safari — I don't have access to a Mac or iPhone. Mobile responsiveness was tested via Chrome DevTools' device emulation (touch, viewport sizing, `prefers-reduced-motion`), but that's not a substitute for a real Safari test, and I'm noting that gap honestly rather than claiming full cross-browser coverage.
 
-**Schema:**
-- Input: `{ habitName: string }` — the habit to look up (matched loosely against known habits)
-- Output: `{ habitName: string, streak: number, completionRate: number, totalDays: number }`
+## Decisions worth explaining
 
-**Error case:** If no matching habit is found, the tool throws an error and the UI shows a designed error card suggesting habits the user can ask about instead.
+- **Sample/in-memory habit data instead of a real database:** the app doesn't have real persistent habit storage yet, so `getHabitStats` reads from a small hardcoded object in the route file. The tool's input/output contract is designed so swapping this for a real database later wouldn't require changing the tool itself.
+- **In-memory rate limiting instead of a real rate-limiting service:** a proper solution (e.g. Upstash Redis) would work correctly across serverless cold starts; the in-memory version here is a reasonable stopgap for a project at this stage, not a production-grade solution, and I've said so above rather than pretending otherwise.
 
-**Currently backed by:** sample in-memory data (`SAMPLE_HABITS` in `route.ts`) as a placeholder until real habit storage is added.
+## How AI tools built this
 
-## 3D Experience: Streak Orb (/scene)
+I used Claude throughout this project, mostly through Claude.ai's chat interface, walking through each assignment step by step rather than having it generate the whole app unsupervised. Specifics:
 
-**What it is:** A small interactive 3D companion for the habit tracker — an icosahedron "orb" that represents your streak. It gently follows the cursor, its material color can be changed, it has a wireframe toggle, and a "Celebrate" button triggers a spring-like scale pulse.
+- **Debugging real errors, not just writing code from scratch.** A recurring theme was the AI SDK's package versions being out of sync (`ai` package pinned to an old v4 while `@ai-sdk/react`/`@ai-sdk/google` expected v7), which caused a `TypeError` and later an `AI_UnsupportedModelVersionError`. Claude diagnosed both by reading the actual error stack and checking package registry data, rather than guessing.
+- **Migrating the chat client from a hand-rolled fetch/SSE reader to the AI SDK's `useChat` hook**, when the app needed to support typed tool-call lifecycle states (input-streaming, input-available, output-available, output-error) for the FE-07 assignment.
+- **Writing the GLSL shader** for the `/hero` page — Claude wrote the fragment shader and explained what each block does (the flow field, the mouse-distance "pull," the vignette, the grain pass), which I could then read back and understand well enough to explain it myself.
+- **Setting up the whole test suite** (Vitest config, React Testing Library tests, mocking `useChat`, a Playwright end-to-end test with a mocked SSE response matching the AI SDK's actual wire protocol) and the GitHub Actions CI workflow, including debugging two real CI-only failures (Vitest accidentally picking up the Playwright spec file, and a Node version too old for a dependency).
+- **Running and interpreting Lighthouse/WAVE audits**, then implementing the specific fixes they surfaced (a missing `aria-label` on the chat input, `aria-live` for streamed replies).
+- I did not have Claude "vibe code" entire features blind — for each assignment, I ran the app myself after every change, reported back what actually happened (including several real bugs it didn't anticipate, like a debug line accidentally left in, or a file edit that silently didn't save), and it adjusted based on that real feedback rather than assuming success.
 
-**Stack:** React Three Fiber + drei, no external 3D model files — the geometry is procedural (a subdivided icosahedron), so there's no GLB/GLTF asset to download or compress at all.
+## What I'd add with more time
 
-**Performance note:** The 3D canvas is lazy-loaded via `next/dynamic` with `ssr: false`, so it doesn't add to the initial page bundle until the `/scene` route is actually visited. Device pixel ratio is capped at 1.5 (`dpr={[1, 1.5]}`) to avoid over-rendering on high-DPI phones, and the geometry itself is lightweight (a single low-poly mesh, no heavy textures). Under `prefers-reduced-motion: reduce`, the canvas is skipped entirely in favor of a static CSS gradient, so no WebGL work happens at all for users who've asked for reduced motion.
-
-**With more time, I'd add:** a real `.glb` habit-icon model per habit type (compressed with DRACO), a scroll-linked camera move for a landing-page hero version of this scene, and persisting the chosen orb color so it reflects the user's actual streak progress instead of being purely decorative.
-
-## Fragment Shader Hero (/hero)
-
-**What it is:** A custom GLSL "aurora" shader rendered fullscreen as a hero background, with the "Habit Tracker" headline overlaid on top.
-
-**Uniforms used:** All three — `u_time` (drives the drifting flow field), `u_resolution` (aspect-corrects the UVs so the effect isn't stretched on wide screens), and `u_mouse` (the flow field and a warm accent color both lean toward the cursor).
-
-**How it works, in short:** Two layered sine waves (offset by time and by distance-to-cursor) create a slow-drifting color flow between a deep blue and teal. A separate "pull" value, based on distance to the mouse, blends in a warm amber accent near the cursor and slightly warps the flow field itself. A vignette darkens the edges/center so the headline text stays readable everywhere, and a light film-grain pass breaks up color banding. Full line-by-line comments are in `components/HeroShader.tsx`.
-
-**Perf/reduced-motion fallback:** The canvas is lazy-loaded via `next/dynamic` (`ssr: false`), devicePixelRatio is capped at 1.5, and under `prefers-reduced-motion: reduce` the shader is skipped entirely in favor of a static CSS gradient using the same three colors — verified via DevTools rendering emulation. The animation loop also naturally pauses when the browser tab is hidden, since it runs on `requestAnimationFrame`, which all major browsers automatically throttle/stop for hidden tabs.
+- Real habit persistence (a database instead of the sample in-memory data)
+- A production-grade rate limiter (Upstash Redis or similar) instead of the in-memory one
+- Actual Safari/mobile Safari testing on real hardware
+- Wiring the 3D streak orb's color to a habit's actual real-time progress instead of being purely decorative
