@@ -16,8 +16,8 @@ Other routes worth checking:
 
 ## Screenshots
 
-![Dashboard with AI chat and habit stats](/public/dashboard.png)
-![Shader hero](/public/hero.png)
+![Dashboard with AI chat and habit stats](public/dashboard.png)
+![Shader hero](public/hero.png)
 
 ## What it does
 
@@ -98,3 +98,11 @@ I used Claude throughout this project, mostly through Claude.ai's chat interface
 - A production-grade rate limiter (Upstash Redis or similar) instead of the in-memory one
 - Actual Safari/mobile Safari testing on real hardware
 - Wiring the 3D streak orb's color to a habit's actual real-time progress instead of being purely decorative
+
+## Other coursework in this repo
+
+A few things in this repo predate the capstone build and are kept as-is since they're real completed work, not clutter:
+
+- **`WORKFLOW.md`** — a vague-vs-precise prompting comparison exercise (same feature, built twice with different prompt quality, comparing correctness, accessibility, and review effort).
+- **`NOTES.md`** and **`playground/`** — a hand-built-vs-shadcn/ui accessibility comparison. `playground/Modal.tsx`, `Tabs.tsx`, and `Disclosure.tsx` are ARIA patterns implemented from scratch, then compared against `components/ui/` (shadcn primitives) to find real gaps (portal rendering, orientation support, uncontrolled state).
+- **`app/calendar`, `app/health`, `app/stats`** — placeholder routes scaffolded early on, not yet built out. Only `/habits` and the dashboard chat are fully implemented.
