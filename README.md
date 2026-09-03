@@ -106,3 +106,13 @@ A few things in this repo predate the capstone build and are kept as-is since th
 - **`WORKFLOW.md`** — a vague-vs-precise prompting comparison exercise (same feature, built twice with different prompt quality, comparing correctness, accessibility, and review effort).
 - **`NOTES.md`** and **`playground/`** — a hand-built-vs-shadcn/ui accessibility comparison. `playground/Modal.tsx`, `Tabs.tsx`, and `Disclosure.tsx` are ARIA patterns implemented from scratch, then compared against `components/ui/` (shadcn primitives) to find real gaps (portal rendering, orientation support, uncontrolled state).
 - **`app/calendar`, `app/health`, `app/stats`** — placeholder routes scaffolded early on, not yet built out. Only `/habits` and the dashboard chat are fully implemented.
+
+## Adding the next case study
+
+New projects go into this README as a new `## Project: <name>` section, using the same three-beat shape every time:
+
+1. **Problem** — one or two sentences on what needed solving and why
+2. **What I did** — the concrete approach, tools, and any real tradeoffs made
+3. **What came of it** — the outcome: what shipped, what I learned, what I'd change
+
+**Next piece of work:** Real habit persistence — replace the in-memory `SAMPLE_HABITS` object with an actual database (likely a simple hosted SQLite via Turso, or Postgres via Neon/Supabase), so habits added via the `/habits` form are real, the `getHabitStats` AI tool queries real data instead of a hardcoded object, and the Calendar/Stats/Health pages have real data to build against.
