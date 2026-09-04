@@ -1,3 +1,7 @@
+## Project Brief
+
+Habit Tracker solves a real gap in most habit apps: they track data but never help you act on it. This app puts an AI coach directly in the loop — it can look up your actual streak and completion numbers (via a real tool call, not a guess) and give short, concrete advice based on them. It's built for anyone trying to build a consistent habit who wants quick, specific nudges rather than generic motivational text. I chose this idea because it let me build something genuinely useful (not a throwaway demo) while giving every week's coursework — streaming, tool calls, testing, accessibility, 3D, shaders — a real, integrated home instead of a dozen disconnected exercises.
+
 # Habit Tracker
 
 A habit-tracking app with an AI coach built in — chat with it for habit advice, ask it to look up your streak stats, and it responds with real, structured data instead of guesses.
@@ -66,6 +70,42 @@ npm run test:e2e # end-to-end test (Playwright)
 
 - `maxDuration = 30` set on the streaming chat route, so a stuck request can't run indefinitely
 - A simple per-IP rate limit (10 requests/minute) and a message-length cap (2000 characters) on the chat route, so a stranger can't casually spam it and drain the API budget. This is an in-memory, best-effort limiter — it resets on cold starts and isn't shared across serverless instances, which is a known limitation of not using a persistent store (like Redis) for this. Documented honestly rather than overstated.
+
+## Deployment checklist (signed off)
+
+- [x] Environment variables set in Vercel (`GOOGLE_GENERATIVE_AI_API_KEY`)
+- [x] Production build succeeds and deploys cleanly on every push to `main`
+- [x] CI (GitHub Actions) runs the full test suite on every push and is green before considering a deploy "done"
+- [x] Cross-browser pass completed: Chrome, Edge, Firefox all verified working. Safari/mobile Safari not tested — no Mac/iPhone access, documented as a known gap rather than skipped silently
+- [x] AI route protected: rate limiting + input length cap in place
+- [x] `maxDuration` set on the streaming route so a stuck request can't hang indefinitely
+- [x] Accessibility audit run (Lighthouse + WAVE) and the one real issue found (missing input label) fixed and re-verified
+- [x] README verified end-to-end: a clean clone + `npm install` + `npm run dev` actually works
+- [ ] Custom domain — not set up; using the default Vercel domain (deliberate, not an oversight)
+- [ ] Dedicated monitoring/alerting — not set up; Vercel's built-in deployment and runtime logs are the current visibility into errors
+
+**Signed off by:** Mokshitha Bevara — September 2026
+
+## Rollback plan
+
+Vercel keeps every previous deployment. If a deploy to `main` breaks production: go to the Vercel dashboard → Deployments → find the last known-good deployment → "Promote to Production." This is a one-click action, no custom infrastructure involved. As a source-level alternative, `git revert` the breaking commit and push, which triggers a new clean deploy through the same CI/CD path.
+
+## Testing evidence
+
+- 11 component tests (Vitest + React Testing Library) across the chat component (empty/pending/streaming/error states), the tool-result component (all 4 lifecycle states), and a validated form
+- 1 Playwright end-to-end test covering the primary flow, with the AI route mocked
+- Both suites run in CI on every push
+- Overall statement coverage: **65%** (Vitest v8 coverage), comfortably above the 50% bar.
+
+![Test coverage report](public/coverage-report.png)
+
+## Reflection
+
+The hardest part of this project wasn't writing new code — it was debugging real mismatches between fast-moving package versions. The AI SDK's `ai` and `@ai-sdk/react`/`@ai-sdk/google` packages use independent version numbers that don't obviously correspond to each other, which caused two separate breaking errors (a `TypeError` from a stale package, then an `AI_UnsupportedModelVersionError`) before the chat even worked. The fix each time came from reading the actual error and checking real registry data, not from guessing based on general familiarity with the library.
+
+If I did this again, I'd pin dependency versions more deliberately from the start instead of letting `npm install` pick whatever's latest, and I'd set up the test suite and CI earlier in the process rather than treating it as a separate later step — several of the bugs I hit (like a debug line I forgot to remove, or a file edit that silently didn't save) would have been caught immediately by a test run instead of manual clicking around.
+
+The thing that genuinely surprised me: a browser extension quietly broke keyboard Tab navigation on my own machine during accessibility testing, which looked exactly like a real bug in my code. It took forcing pseudo-states in DevTools and testing with extensions disabled to figure out the CSS and keyboard handling were actually correct the whole time — the "bug" was in my testing environment, not my app. It was a good reminder to verify a problem is actually in the code before assuming it is.
 
 ## Cross-browser testing
 
